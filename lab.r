@@ -1,46 +1,48 @@
-<<<<<<< HEAD
-data(francdat)
-x <- francdat [,c(2,4,5,6,8)]
-print(x)
-ff <- freqCalc(x, keyVars=c(1,2,3,4) , w=5)
-print(cbind(x,ff$fk,ff$Fk))
-rk <- indivRisk(ff)$rk
-print (cbind(x, ff$fk, ff$Fk, rk ))
-x[,1] <- globalRecode(x[ ,1],breaks=c(0,1,2,3,6),labels=c(1,2,3,4))
-print(x)
-ff <- freqCalc(x, keyVars=c(1,2,3,4) , w=5)
-print(cbind(x,ff$fk,ff$Fk))
-rk <- indivRisk( ff )$rk
-print (cbind(x, ff$fk , ff$Fk , rk ))
-localsupx <- kAnon(x, keyVars=1:4, k=2)
-plot(localsupx)
-print(localsupx$xAnon)
-newX <- cbind(localsupx$xAnon, x$w)
-newff <- freqCalc(newX, keyVars=c(1,2,3,4) , w=5)
-print(cbind(newX,newff$fk,newff$Fk))
-newrk <- indivRisk( newff )$rk
-print (cbind(newX, newff$fk , newff$Fk , newrk ))
-=======
 # Cargamos el Archivo CSV
 
 data <- read.csv("datat.csv", header = TRUE, sep = ";")
 
 x <- data # Eliminas la ultima columna
 
-#Cambios en el dataset
 
-x[,7] <- globalRecode(x[ ,7],breaks=c(0,2,3,4),labels=c(1,2,3))
-x[,8] <- globalRecode(x[ ,8],breaks=c(0,2,3,4),labels=c(1,2,3))
-x[,3] <- globalRecode(x[ ,3],breaks=c(15,16,17,18,22),labels=c(16,18,19,21))
+# Separar variables numericas de las categoricas (library(dplyr))
+numeric_vars <- x %>% select_if(is.numeric)
 
-localsupx <- kAnon(x, keyVars=c(13,15), k=10)
+# aplicar microagregacion 
+ag_level = 2
 
-# Calculas la frecuencia de todas las columnas del mismo
+# ma_x = micro_agregration
+ma_x_single <- microaggregation(numeric_vars, method = 'single',aggr = ag_level)
+ma_x_influence <- microaggregation(numeric_vars, method = 'influence',aggr = ag_level)
+ma_x_pca <- microaggregation(numeric_vars, method = 'pca',aggr = ag_level)
 
-ff <- freqCalc(x, keyVars = names(x), w = 34)
-rk <- indivRisk(ff)$rk
+# Evaluar Metricas
+# 1. dUtility
+print('Microagregacion')
+print('dUtility[Single]: ')
+print( dUtility(ma_x_single$x, ma_x_single$mx, method='IL1'))
+print('dUtility[influence]: ')
+print(dUtility(numeric_vars, ma_x_influence$mx, method='IL1'))
+print('dUtility[pca]: ')
+print(dUtility(numeric_vars, ma_x_pca$mx, method='IL1'))
+# 2. dRisk
+print('dRisk[Single]: ')
+print(dRisk(numeric_vars, ma_x_single$mx))
+print('dRisk[influence]: ')
+print(dRisk(numeric_vars, ma_x_influence$mx))
+print('dRisk[pca]: ')
+print(dRisk(numeric_vars, ma_x_pca$mx))
 
-#Escribimos el resultado en un archivo CSV
+## Seleccionar las varibles no numericas
 
-write.table(cbind(x,ff$fk,ff$Fk,rk), file = "result.csv", sep = ";", row.names = FALSE)
->>>>>>> a6be7fb6635ca889029a34c0593450a8b3149b10
+# numeric_columns es un vector con los nombres de las columnas numéricas
+numeric_columns <- colnames(numeric_vars)
+
+# Seleccionar las columnas que no están en numeric_columns
+non_numeric_columns <- x[, !(colnames(x) %in% numeric_columns)]
+
+# Crear un nuevo conjunto de datos con las columnas seleccionadas
+combined_dataset <- cbind(non_numeric_columns, ma_x_single$mx)
+
+# Escribir el conjunto de datos combinado a un archivo CSV
+write.csv(combined_dataset, "combined_dataset.csv", row.names = FALSE, sep = ";")
